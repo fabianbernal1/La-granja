@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Formulario Cerdo</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+</head>
+<body>
+
+    <h1 id="formTitle">Crear Cerdo</h1>
+
+    <form id="pigForm">
+        <input type="hidden" id="pigId" name="pigId">
+
+        <label for="breed">Raza:</label>
+        <select id="breed" name="breed" required>
+            <option value="">Seleccione</option>
+            <option value="YORK">York</option>
+            <option value="HAMP">Hamp</option>
+            <option value="DUROC">Duroc</option>
+        </select><br><br>
+
+        <label for="age">Edad (meses):</label>
+        <input type="number" id="age" name="age" required><br><br>
+
+        <label for="weight">Peso (kg):</label>
+        <input type="number" id="weight" name="weight" step="0.1" required><br><br>
+
+        <label for="client">Cliente:</label>
+        <select id="client" name="client" required></select><br><br>
+
+        <button type="submit">Guardar</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const apiUrl = "/api/pigs";
+        const clientsUrl = "/api/clients";
+
+        // Cargar clientes en el select
+        function loadClients() {
+            $.get(clientsUrl, function(clients) {
+                clients.forEach(client => {
+                    $('#client').append(
+                        `<option value="${client.idCard}">${client.firstName} ${client.lastName}</option>`
+                    );
+                });
+            });
+        }
+
+        // Cargar datos del cerdo si viene un id por parámetro
+        function loadPig(id) {
+            $.get(`${apiUrl}/${id}`, function(pig) {
+                $('#formTitle').text("Editar Cerdo");
+                $('#pigId').val(pig.id);
+                $('#breed').val(pig.breed);
+                $('#age').val(pig.age);
+                $('#weight').val(pig.weight);
+                $('#client').val(pig.client.idCard);
+            }).fail(function() {
+                $('#result').text("Cerdo no encontrado.");
+            });
+        }
+        
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+     // Manejo del submit
+        $('#pigForm').submit(function(event) {
+            event.preventDefault();
+
+            const pigId = $('#pigId').val();  // sigue obteniendo el id del input oculto (o lo que tengas)
+
+            const pigData = {
+                // Solo agregas el id si existe (PUT)
+                ...(pigId && { id: parseInt(pigId) }),
+                breed: $('#breed').val(),
+                age: parseInt($('#age').val()),
+                weight: parseFloat($('#weight').val()),
+                client: {
+                    idCard: $('#client').val()
+                }
+            };
+
+            const method = pigId ? "PUT" : "POST";
+            const url = pigId ? `${apiUrl}/${pigId}` : apiUrl;
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: "application/json",
+                data: JSON.stringify(pigData),
+                success: function(response) {
+                    $('#result').text(`Cerdo ${pigId ? 'actualizado' : 'creado'} correctamente (ID: ${response.id})`);
+                    if (!pigId) {
+                        $('#pigForm')[0].reset();
+                    }
+                },
+                error: function() {
+                    $('#result').text("Error al guardar el cerdo.");
+                }
+            });
+        });
+
+
+        // Inicialización
+        $(document).ready(function() {
+            loadClients();
+
+            const pigId = getQueryParam("pigId");
+            if (pigId) {
+                loadPig(pigId);
+            }
+        });
+
+    </script>
+
+</body>
+</html>

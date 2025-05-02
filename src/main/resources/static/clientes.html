@@ -10,12 +10,15 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid black; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        button { margin-top: 20px; padding: 10px 20px; }
     </style>
 </head>
 <body>
 
     <h1>Reporte de Clientes y sus Cerdos</h1>
     
+    <button id="downloadXml">Descargar XML</button>
+
     <table id="clientesTable">
         <thead>
             <tr>
@@ -30,12 +33,15 @@
     </table>
 
     <script>
+        let clientesData = [];
+
         $(document).ready(function() {
             $.ajax({
                 url: "/api/clients", 
                 method: "GET",
                 dataType: "json",
                 success: function(response) {
+                    clientesData = response; // guardamos para el XML
                     let tbody = $("#clientesTable tbody");
                     tbody.empty();
 
@@ -62,6 +68,41 @@
                     alert("Error al cargar los datos de los clientes.");
                 }
             });
+        });
+
+        $("#downloadXml").click(function() {
+            let xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<clientes>\n`;
+
+            clientesData.forEach(client => {
+                xmlContent += `  <cliente>\n`;
+                xmlContent += `    <idCard>${client.idCard}</idCard>\n`;
+                xmlContent += `    <nombre>${client.firstName} ${client.lastName}</nombre>\n`;
+                xmlContent += `    <direccion>${client.address}</direccion>\n`;
+                xmlContent += `    <telefono>${client.phone}</telefono>\n`;
+                xmlContent += `    <cerdos>\n`;
+
+                client.pigs.forEach(pig => {
+                    xmlContent += `      <cerdo>\n`;
+                    xmlContent += `        <raza>${pig.breed}</raza>\n`;
+                    xmlContent += `        <edad>${pig.age}</edad>\n`;
+                    xmlContent += `        <peso>${pig.weight}</peso>\n`;
+                    xmlContent += `      </cerdo>\n`;
+                });
+
+                xmlContent += `    </cerdos>\n`;
+                xmlContent += `  </cliente>\n`;
+            });
+
+            xmlContent += `</clientes>`;
+
+            // Creamos archivo Blob y lo descargamos
+            const blob = new Blob([xmlContent], { type: "application/xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "clientes_reporte.xml";
+            a.click();
+            URL.revokeObjectURL(url);
         });
     </script>
 

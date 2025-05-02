@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Listado de Cerdos</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <h1>Listado de Cerdos</h1>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Raza</th>
+                <th>Edad</th>
+                <th>Peso</th>
+                <th>Cliente</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="pigTableBody">
+        </tbody>
+    </table>
+    
+    <a href="/reportes/pig/create" class="btn btn-primary">Crear</a>
+
+    <script>
+        function loadPigs() {
+            $('#pigTableBody').empty();
+            $.ajax({
+                url: "/api/clients",
+                method: "GET",
+                success: function(clients) {
+                    clients.forEach(client => {
+                        client.pigs.forEach(pig => {
+                            $('#pigTableBody').append(`
+                                <tr>
+                                    <td>${pig.id}</td>
+                                    <td>${pig.breed}</td>
+                                    <td>${pig.age}</td>
+                                    <td>${pig.weight}</td>
+                                    <td>${client.firstName} ${client.lastName}</td>
+                                    <td>
+                                        <button onclick="deletePig(${pig.id})">Eliminar</button>
+                                        <button onclick="editPig(${pig.id})">Editar</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    });
+                },
+                error: function() {
+                    alert("Error al cargar los cerdos");
+                }
+            });
+        }
+
+        function deletePig(id) {
+            if (confirm("¿Seguro que deseas eliminar este cerdo?")) {
+                $.ajax({
+                    url: `/api/pigs/${id}`,
+                    method: "DELETE",
+                    success: function() {
+                        alert("Cerdo eliminado correctamente");
+                        loadPigs();
+                    },
+                    error: function() {
+                        alert("Error al eliminar el cerdo");
+                    }
+                });
+            }
+        }
+
+        function editPig(id) {
+            window.location.href = `/reportes/pig/edit/${id}`;
+        }
+
+        $(document).ready(function() {
+            loadPigs();
+        });
+    </script>
+
+</body>
+</html>

@@ -44,38 +44,62 @@ public class PigService {
     public Pig createPig(Pig pig) {
         List<PigFeeding> originalFeedings = pig.getFeedings();
         pig.setFeedings(null);
+
         Pig pigNew = pigRepository.save(pig);
-        List<PigFeeding> feedings = new ArrayList<>(originalFeedings.stream()
-                .map(pf -> {
-                    Feeding feeding = feedingService.getFeedingById(pf.getFeeding().getId())
-                        .orElseThrow(() -> new RuntimeException("Feeding not found: " + pf.getFeeding().getId()));
-                    return new PigFeeding(pigNew, feeding);
-                })
-                .toList());
-        pigNew.setFeedings(feedings);
-        return pigRepository.save(pigNew);
+
+        try {
+            if (originalFeedings != null) {
+                List<PigFeeding> feedings = originalFeedings.stream()
+                    .map(pf -> {
+                        Feeding feeding = feedingService.getFeedingById(pf.getFeeding().getId())
+                            .orElseThrow(() -> new RuntimeException("Feeding not found: " + pf.getFeeding().getId()));
+                        return new PigFeeding(pigNew, feeding);
+                    })
+                    .toList();
+
+                pigNew.setFeedings(feedings);
+                pigRepository.save(pigNew);
+            }
+        } catch (Exception e) {
+            System.err.println("Error asignando feedings al cerdo: " + e.getMessage());
+        }
+
+        return pigNew;
     }
 
+
     public Pig updatePig(Long id, Pig pigDetails) {
-        return pigRepository.findById(id)
-                .map(pig -> {
-                    pig.setBreed(pigDetails.getBreed());
-                    pig.setAge(pigDetails.getAge());
-                    pig.setWeight(pigDetails.getWeight());
-                    pig.setClient(pigDetails.getClient());
-                    List<PigFeeding> originalFeedings = pigDetails.getFeedings();
-                    List<PigFeeding> feedings = new ArrayList<>(originalFeedings.stream()
-                            .map(pf -> {
-                                Feeding feeding = feedingService.getFeedingById(pf.getFeeding().getId())
-                                    .orElseThrow(() -> new RuntimeException("Feeding not found: " + pf.getFeeding().getId()));
-                                return new PigFeeding(pig, feeding);
-                            })
-                            .toList());
-                    pig.setFeedings(feedings);
-                    return pigRepository.save(pig);
-                })
-                .orElseThrow(() -> new RuntimeException("Pig not found"));
+        // 1) Buscamos el pig o lanzamos de una vez si no existe
+        Pig pig = pigRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Pig not found: " + id));
+
+        // 2) Actualizamos campos básicos
+        pig.setBreed(pigDetails.getBreed());
+        pig.setAge(pigDetails.getAge());
+        pig.setWeight(pigDetails.getWeight());
+        pig.setClient(pigDetails.getClient());
+
+        // 3) Intentamos actualizar feedings solo si vienen en pigDetails
+        List<PigFeeding> originalFeedings = pigDetails.getFeedings();
+        if (originalFeedings != null) {
+            try {
+                List<PigFeeding> newFeedings = originalFeedings.stream()
+                    .map(pf -> {
+                        Long feedingId = pf.getFeeding().getId();
+                        Feeding feeding = feedingService.getFeedingById(feedingId)
+                            .orElseThrow(() -> new RuntimeException("Feeding not found: " + feedingId));
+                        return new PigFeeding(pig, feeding);
+                    })
+                    .toList();
+                pig.setFeedings(newFeedings);
+            } catch (Exception e) {
+            	System.out.print(e);
+            }
+        }
+        // 4) Guardamos y devolvemos
+        return pigRepository.save(pig);
     }
+
 
     public void deletePig(Long id) {
         pigRepository.deleteById(id);
